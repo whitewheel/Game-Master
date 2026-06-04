@@ -1,0 +1,9 @@
+discord.py==2.4.0
+openai>=1.40.0
+python-dotenv
+PyNaCl
+psycopg2-binary==2.9.9
+pandas
+python-docx
+openpyxl
+supabase>=2.0.0
