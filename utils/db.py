@@ -8,18 +8,11 @@ from psycopg.rows import dict_row
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Paksa IPv4 dengan tambahkan options ke connection string
 def _build_url():
     url = DATABASE_URL or ""
-    # Transaction pooler (port 6543) tidak support prepared statements
-    params = []
     if "sslmode" not in url:
-        params.append("sslmode=require")
-    if "prepared_statements" not in url:
-        params.append("prepared_statements=false")
-    if params:
         sep = "&" if "?" in url else "?"
-        url += sep + "&".join(params)
+        url += sep + "sslmode=require"
     return url
 
 @contextmanager
@@ -28,7 +21,9 @@ def get_conn():
     last_err = None
     for attempt in range(3):
         try:
-            conn = psycopg.connect(url, row_factory=dict_row)
+            # prepare_threshold=0 → disable prepared statements
+            # wajib untuk Supabase Transaction Pooler (port 6543)
+            conn = psycopg.connect(url, row_factory=dict_row, prepare_threshold=0)
             try:
                 yield conn
                 conn.commit()
