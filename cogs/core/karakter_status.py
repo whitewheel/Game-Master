@@ -338,9 +338,9 @@ class CharacterStatus(commands.Cog):
         exists = fetchone(guild_id, "SELECT id FROM characters WHERE name=%s", (name,))
         if not exists:
             execute(guild_id, """
-                INSERT INTO characters (name, hp, hp_max, energy, energy_max, stamina, stamina_max)
-                VALUES (%s,%s,%s,%s,%s,%s,%s)
-            """, (name, hp, hp, energy, energy, stamina, stamina))
+                INSERT INTO characters (guild_id, name, hp, hp_max, energy, energy_max, stamina, stamina_max)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (guild_id, name, hp, hp, energy, energy, stamina, stamina))
         else:
             await status_service.set_status(guild_id, "char", name, "hp", hp)
             await status_service.set_status(guild_id, "char", name, "hp_max", hp)
