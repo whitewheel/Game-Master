@@ -36,7 +36,6 @@ CATEGORY_EMOJI = {
 }
 
 CATEGORIES = [
-    ("home", "Overview"),
     ("core", "Core (Ringkasan Cepat)"),
     ("status", "Status (Karakter)"),
     ("enemy", "Enemy"),
@@ -46,7 +45,6 @@ CATEGORIES = [
     ("init", "Initiative"),
     ("tick", "Tick Effects"),
     ("crafting", "Crafting System"),
-    ("world", "World (Ringkasan)"),
     ("quest", "Quest"),
     ("npc", "NPC"),
     ("shop", "Shop / Merchant"),
@@ -900,13 +898,25 @@ EMBED_BUILDERS = {
 #  INTERACTIVE VIEW
 # ===============================
 
+# Maksimal opsi per dropdown sesuai batas keras Discord
+PAGE_SIZE = 25
+
+
+def _chunk_categories(size: int = PAGE_SIZE):
+    """Bagi CATEGORIES jadi halaman-halaman berisi maks `size` opsi."""
+    return [CATEGORIES[i:i + size] for i in range(0, len(CATEGORIES), size)] or [[]]
+
+
 class HelpSelect(discord.ui.Select):
-    def __init__(self):
+    def __init__(self, page_items):
         options = [
             discord.SelectOption(label=label, value=key, emoji=CATEGORY_EMOJI.get(key, "📦"))
-            for key, label in CATEGORIES
+            for key, label in page_items
         ]
-        super().__init__(placeholder="Pilih kategori bantuan…", min_values=1, max_values=1, options=options)
+        super().__init__(
+            placeholder="Pilih kategori bantuan…",
+            min_values=1, max_values=1, options=options
+        )
 
     async def callback(self, interaction: discord.Interaction):
         key = self.values[0]
@@ -914,11 +924,43 @@ class HelpSelect(discord.ui.Select):
         embed = builder(interaction.guild) if key == "home" else builder()
         await interaction.response.edit_message(embed=embed, view=self.view)
 
+
 class HelpNav(discord.ui.View):
     def __init__(self, author_id: int, timeout: float = 180):
         super().__init__(timeout=timeout)
         self.author_id = author_id
-        self.add_item(HelpSelect())
+        self.pages = _chunk_categories()
+        self.page = 0
+        self._render()
+
+    def _render(self):
+        """Bangun ulang komponen: 1 dropdown halaman aktif + tombol geser kalau >1 halaman."""
+        self.clear_items()
+        self.add_item(HelpSelect(self.pages[self.page]))
+
+        if len(self.pages) > 1:
+            prev_btn = discord.ui.Button(
+                label="◀ Sebelumnya", style=discord.ButtonStyle.secondary,
+                disabled=(self.page == 0)
+            )
+            next_btn = discord.ui.Button(
+                label="Berikutnya ▶", style=discord.ButtonStyle.secondary,
+                disabled=(self.page >= len(self.pages) - 1)
+            )
+            prev_btn.callback = self._prev
+            next_btn.callback = self._next
+            self.add_item(prev_btn)
+            self.add_item(next_btn)
+
+    async def _prev(self, interaction: discord.Interaction):
+        self.page = max(0, self.page - 1)
+        self._render()
+        await interaction.response.edit_message(view=self)
+
+    async def _next(self, interaction: discord.Interaction):
+        self.page = min(len(self.pages) - 1, self.page + 1)
+        self._render()
+        await interaction.response.edit_message(view=self)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == self.author_id
