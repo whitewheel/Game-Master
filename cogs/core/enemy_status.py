@@ -110,7 +110,7 @@ class EnemyStatus(commands.Cog):
 
     def _ensure_table(self, guild_id: int):
         # Schema sudah ada di Supabase
-    pass
+        pass
 
     @commands.group(name="enemy", invoke_without_command=True)
     async def enemy(self, ctx):
