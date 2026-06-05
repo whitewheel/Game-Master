@@ -21,9 +21,9 @@ def get_conn():
     last_err = None
     for attempt in range(3):
         try:
-            # prepare_threshold=0 → disable prepared statements
+            # prepare_threshold=None → disable prepared statements sepenuhnya
             # wajib untuk Supabase Transaction Pooler (port 6543)
-            conn = psycopg.connect(url, row_factory=dict_row, prepare_threshold=0)
+            conn = psycopg.connect(url, row_factory=dict_row, prepare_threshold=None)
             try:
                 yield conn
                 conn.commit()
