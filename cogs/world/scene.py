@@ -12,7 +12,7 @@ class Scene(commands.Cog):
     # ---------- DB Helpers ----------
     def _ensure_table(self, guild_id: int):
         # Schema sudah ada di Supabase
-        pass
+    pass
 
     def _get_latest_scene(self, guild_id: int):
         row = fetchone(guild_id, "SELECT * FROM scenes ORDER BY updated_at DESC LIMIT 1")

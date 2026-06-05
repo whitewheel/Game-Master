@@ -14,7 +14,7 @@ from utils.db import execute, fetchone, fetchall
 
 def _ensure_tables(guild_id: int):
     # Schema sudah ada di Supabase
-        pass
+    pass
 
 def _load_initiative(guild_id: int):
     row = fetchone(guild_id, "SELECT * FROM initiative LIMIT 1")

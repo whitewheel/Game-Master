@@ -114,7 +114,7 @@ class AllyStatus(commands.Cog):
 
     def _ensure_table(self, guild_id: int):
         # Schema sudah ada di Supabase
-        pass
+    pass
 
     @commands.group(name="ally", invoke_without_command=True)
     async def ally(self, ctx):
