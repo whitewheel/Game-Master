@@ -79,11 +79,11 @@ async def damage(guild_id: int, target_type, name, amount: int):
     execute(guild_id, f"UPDATE {table} SET hp=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s",
             (new_hp, row["id"]))
 
-    execute(guild_id, "INSERT INTO history (action, data) VALUES (%s,%s)",
-            ("dmg", json.dumps({"target": name, "type": target_type,
+    execute(guild_id, "INSERT INTO history (guild_id, action, data) VALUES (%s,%s,%s)",
+            (guild_id, "dmg", json.dumps({"target": name, "type": target_type,
                                 "old": cur_hp, "new": new_hp, "amount": int(amount)})))
-    execute(guild_id, "INSERT INTO timeline (event) VALUES (%s)",
-            (f"{name} menerima {int(amount)} damage → {new_hp}/{hp_max} HP",))
+    execute(guild_id, "INSERT INTO timeline (guild_id, event) VALUES (%s,%s)",
+            (guild_id, f"{name} menerima {int(amount)} damage → {new_hp}/{hp_max} HP",))
     return new_hp
 
 async def heal(guild_id: int, target_type, name, amount: int):
@@ -100,11 +100,11 @@ async def heal(guild_id: int, target_type, name, amount: int):
     execute(guild_id, f"UPDATE {table} SET hp=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s",
             (new_hp, row["id"]))
 
-    execute(guild_id, "INSERT INTO history (action, data) VALUES (%s,%s)",
-            ("heal", json.dumps({"target": name, "type": target_type,
+    execute(guild_id, "INSERT INTO history (guild_id, action, data) VALUES (%s,%s,%s)",
+            (guild_id, "heal", json.dumps({"target": name, "type": target_type,
                                  "old": cur_hp, "new": new_hp, "amount": int(amount)})))
-    execute(guild_id, "INSERT INTO timeline (event) VALUES (%s)",
-            (f"{name} disembuhkan {int(amount)} HP → {new_hp}/{hp_max} HP",))
+    execute(guild_id, "INSERT INTO timeline (guild_id, event) VALUES (%s,%s)",
+            (guild_id, f"{name} disembuhkan {int(amount)} HP → {new_hp}/{hp_max} HP",))
     return new_hp
 
 async def use_resource(guild_id: int, target_type, name, field: str, amount: int, regen=False):
@@ -124,8 +124,8 @@ async def use_resource(guild_id: int, target_type, name, field: str, amount: int
             (new_val, row["id"]))
 
     action = "regen" if regen else "use"
-    execute(guild_id, "INSERT INTO history (action, data) VALUES (%s,%s)",
-            (f"{field}_{action}", json.dumps({"target": name, "type": target_type,
+    execute(guild_id, "INSERT INTO history (guild_id, action, data) VALUES (%s,%s,%s)",
+            (guild_id, f"{field}_{action}", json.dumps({"target": name, "type": target_type,
                                               "old": cur, "new": new_val, "amount": int(amount)})))
     return new_val
 
@@ -190,8 +190,8 @@ async def set_status(guild_id: int, target_type, name, field: str, value):
     old_value = row.get(field)
     execute(guild_id, f"UPDATE {table} SET {field}=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s",
             (value, row["id"]))
-    execute(guild_id, "INSERT INTO history (action, data) VALUES (%s,%s)",
-            ("set_status", json.dumps({"target": name, "type": target_type,
+    execute(guild_id, "INSERT INTO history (guild_id, action, data) VALUES (%s,%s,%s)",
+            (guild_id, "set_status", json.dumps({"target": name, "type": target_type,
                                        "field": field, "old": old_value, "new": value})))
     return value
 

@@ -125,8 +125,8 @@ def add_item(guild_id: int, owner, item_name, qty=1, metadata=None, user_id="0")
     calc_carry(guild_id, owner)
 
     # history
-    execute(guild_id, "INSERT INTO history (action, data) VALUES (%s,%s)",
-            ("loot_add", json.dumps({"owner": owner, "item": item_name, "qty": qty})))
+    execute(guild_id, "INSERT INTO history (guild_id, action, data) VALUES (%s,%s,%s)",
+            (guild_id, "loot_add", json.dumps({"owner": owner, "item": item_name, "qty": qty})))
 
     # timeline log_event
     log_event(
@@ -164,8 +164,8 @@ def remove_item(guild_id: int, owner, item_name, qty=1, user_id="0"):
     # sync carry
     calc_carry(guild_id, owner)
 
-    execute(guild_id, "INSERT INTO history (action, data) VALUES (%s,%s)",
-            ("loot_remove", json.dumps({"owner": owner, "item": item_name, "qty": qty})))
+    execute(guild_id, "INSERT INTO history (guild_id, action, data) VALUES (%s,%s,%s)",
+            (guild_id, "loot_remove", json.dumps({"owner": owner, "item": item_name, "qty": qty})))
 
     log_event(
         guild_id,
