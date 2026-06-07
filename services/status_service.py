@@ -62,8 +62,29 @@ def _ensure_exists(guild_id: int, table: str, name: str) -> dict:
 # XP SCALING HELPER
 # ===============================
 def xp_required(level: int) -> int:
-    """Hitung XP yang dibutuhkan untuk naik dari level ini ke berikutnya."""
-    return int(100 * (1.5 ** (level - 1)))
+    """XP untuk naik DARI `level` ke level berikutnya.
+    HARUS identik dgn web (lib/xp.ts xpRequired): pakai round, bukan int/truncate."""
+    L = max(1, int(level or 1))
+    return round(100 * (1.5 ** (L - 1)))
+
+
+def level_from_total_xp(total_xp: int):
+    """Turunkan (level, into, need) dari TOTAL xp kumulatif.
+    Padanan web: lib/xp.ts levelFromTotalXp."""
+    total = max(0, int(total_xp or 0))
+    level, spent = 1, 0
+    need = xp_required(level)
+    while total - spent >= need and level < 999:
+        spent += need
+        level += 1
+        need = xp_required(level)
+    return level, total - spent, need
+
+
+def total_xp_for_level(level: int) -> int:
+    """XP kumulatif minimum agar tepat berada di awal `level`."""
+    target = max(1, int(level or 1))
+    return sum(xp_required(L) for L in range(1, target))
 
 # ===============================
 # HP / VITALS
@@ -207,23 +228,20 @@ async def add_gold(guild_id: int, name, amount: int):
     return new_val
 
 async def add_xp(guild_id: int, name, amount: int):
+    """Tambah XP. MODEL: kolom `xp` = TOTAL kumulatif; `level` diturunkan.
+    Lonjakan besar tertangani otomatis (butuh 100, dikasih 150 -> naik 1 lv, sisa 50).
+    Return level baru bila naik level, None kalau tidak."""
     row = _ensure_exists(guild_id, "characters", name)
     cur_xp = int(row.get("xp") or 0)
-    cur_level = int(row.get("level") or 1)
-    new_xp = cur_xp + int(amount)
+    old_level, _, _ = level_from_total_xp(cur_xp)
 
-    level_up = None
-
-    # loop untuk cek naik level berulang
-    while new_xp >= xp_required(cur_level):
-        new_xp -= xp_required(cur_level)
-        cur_level += 1
-        level_up = cur_level
+    new_xp = max(0, cur_xp + int(amount))
+    new_level, _, _ = level_from_total_xp(new_xp)
 
     execute(
         guild_id,
         "UPDATE characters SET xp=%s, level=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s",
-        (new_xp, cur_level, row["id"])
+        (new_xp, new_level, row["id"])
     )
 
-    return level_up  # None kalau tidak naik level
+    return new_level if new_level > old_level else None

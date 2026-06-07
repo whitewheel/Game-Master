@@ -110,14 +110,17 @@ async def complete_quest(guild_id: int, title, targets: list = None, user_id=0):
 
     msg_parts = [f"{ICONS['check']} Quest **{quest['name']}** selesai!"]
 
-    # XP
+    # XP - lewat add_xp supaya level ikut naik otomatis (jangan set xp mentah!)
     if "xp" in rewards and rewards["xp"] > 0:
+        level_ups = []
         for ch in targets:
-            old = fetchone(guild_id, "SELECT xp FROM characters WHERE name=%s", (ch,))
-            if old:
-                new_val = old["xp"] + rewards["xp"]
-                await status_service.set_status(guild_id, "char", ch, "xp", new_val)
-        msg_parts.append(f"{ICONS['xp']} {rewards['xp']} XP")
+            lvl = await status_service.add_xp(guild_id, ch, rewards["xp"])
+            if lvl:
+                level_ups.append(f"{ch}->Lv{lvl}")
+        line = f"{ICONS['xp']} {rewards['xp']} XP"
+        if level_ups:
+            line += f" (naik: {', '.join(level_ups)})"
+        msg_parts.append(line)
 
     # Gold
     if "gold" in rewards and rewards["gold"] > 0:

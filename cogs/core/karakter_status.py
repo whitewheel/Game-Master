@@ -101,8 +101,8 @@ def _stamina_status(cur: int, mx: int) -> str:
     elif pct >= 25: return "😩 Hampir kelelahan"
     else: return "🥴 Ambruk kelelahan"
 
-def _xp_required(level: int) -> int:
-    return int(100 * (1.5 ** (level - 1)))
+# XP/level: gunakan helper terpusat dari status_service (sumber tunggal, sinkron dgn web).
+# (status_service sudah diimpor di atas)
 
 # ===== Embed Builder =====
 
@@ -147,10 +147,9 @@ async def make_embed(characters: list, ctx, title="🧍 Status Karakter"):
 
         # ===== Core info =====
         # ===== Core info =====
-        cur_level = c.get("level", 1)
-        cur_xp = c.get("xp", 0)
-        xp_need = _xp_required(cur_level)
-        profile_line = f"Lv {cur_level} | XP {cur_xp}/{xp_need} | 💰 {c.get('gold',0)} gold"
+        # xp = TOTAL kumulatif -> turunkan level + progress-dalam-level untuk display
+        cur_level, xp_into, xp_need = status_service.level_from_total_xp(c.get("xp", 0))
+        profile_line = f"Lv {cur_level} | XP {xp_into}/{xp_need} | 💰 {c.get('gold',0)} gold"
         combat_line = f"AC {c['ac']} | Init {c['init_mod']} | Speed {c.get('speed',30)}"
         carry_line = f"⚖️ Carry: {c.get('carry_used',0):.1f} / {c.get('carry_capacity',0)}"
         
@@ -369,8 +368,14 @@ class CharacterStatus(commands.Cog):
 
     @status_group.command(name="setlevel")
     async def status_setlevel(self, ctx, name: str, level: int):
-        await status_service.set_status(ctx.guild.id, "char", name, "level", level)
-        await ctx.send(f"⬆️ Level {name} → {level}")
+        # level = turunan dari xp. Set level berarti set xp ke ambang awal level tsb,
+        # lalu simpan level (sinkron). Tanpa ini, level akan ke-reset saat addxp berikutnya.
+        level = max(1, level)
+        new_xp = status_service.total_xp_for_level(level)
+        execute(ctx.guild.id,
+                "UPDATE characters SET xp=%s, level=%s, updated_at=CURRENT_TIMESTAMP WHERE name=%s",
+                (new_xp, level, name))
+        await ctx.send(f"⬆️ Level {name} → {level} (XP di-set ke {new_xp})")
 
     @status_group.command(name="setac")
     async def status_setac(self, ctx, name: str, ac: int):
@@ -400,8 +405,9 @@ class CharacterStatus(commands.Cog):
             return await ctx.send(f"❌ Karakter {name} tidak ditemukan.")
         current = row["xp"] or 0
         new_val = max(0, current - amount)
-        execute(guild_id, "UPDATE characters SET xp=%s WHERE name=%s", (new_val, name))
-        await ctx.send(f"📉 {name} kehilangan {amount} XP → sisa {new_val}")
+        new_level, _, _ = status_service.level_from_total_xp(new_val)
+        execute(guild_id, "UPDATE characters SET xp=%s, level=%s WHERE name=%s", (new_val, new_level, name))
+        await ctx.send(f"📉 {name} kehilangan {amount} XP → sisa {new_val} (Lv {new_level})")
 
     @status_group.command(name="addgold")
     async def status_addgold(self, ctx, name: str, amount: int):
